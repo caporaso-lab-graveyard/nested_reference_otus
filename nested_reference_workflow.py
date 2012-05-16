@@ -6,7 +6,7 @@ __author__ = "Greg Caporaso"
 __copyright__ = "Copyright 2010, The QIIME project"
 __credits__ = ["Greg Caporaso"]
 __license__ = "GPL"
-__version__ = "1.2.0-dev"
+__version__ = "1.5.0-dev"
 __maintainer__ = "Greg Caporaso"
 __email__ = "gregcaporaso@gmail.com"
 __status__ = "Development"
@@ -104,13 +104,13 @@ def run_pick_nested_greengenes_otus(input_fasta_fp,
     similarity_thresholds.reverse()
     
     current_inseqs_fp = input_fasta_fp
-    current_inseqs_basename = splitext(split(current_inseqs_fp)[1])[0]
     previous_otu_map = None
     for similarity_threshold in similarity_thresholds:
+        current_inseqs_basename = splitext(split(current_inseqs_fp)[1])[0]
         
         # pick otus command
-        otu_fp = '%s/gg_%d_otu_map.txt' % (otu_dir,similarity_threshold)
-        clusters_fp = '%s/gg_%d_clusters.uc' % (otu_dir,similarity_threshold)
+        otu_fp = '%s/%d_otu_map.txt' % (otu_dir,similarity_threshold)
+        clusters_fp = '%s/%d_clusters.uc' % (otu_dir,similarity_threshold)
         temp_otu_fp = '%s/%s_otus.txt' % (otu_dir, current_inseqs_basename)
         temp_log_fp = '%s/%s_otus.log' % (otu_dir, current_inseqs_basename)
         temp_clusters_fp = '%s/%s_clusters.uc' % (otu_dir, current_inseqs_basename)
@@ -129,9 +129,8 @@ def run_pick_nested_greengenes_otus(input_fasta_fp,
         files_to_remove.append(temp_log_fp)
         
         # rep set picking
-        temp_rep_set_fp = get_tmp_filename(prefix='NestedGG',
+        temp_rep_set_fp = get_tmp_filename(prefix='NestedReference',
                                            suffix='.fasta')
-        files_to_remove.append(temp_rep_set_fp)
         pick_rep_set_cmd = \
          'pick_rep_set.py -m first -i %s -o %s -f %s' % (
           otu_fp, 
@@ -140,35 +139,27 @@ def run_pick_nested_greengenes_otus(input_fasta_fp,
         commands.append([('Pick Rep Set (%d)' % similarity_threshold,
                            pick_rep_set_cmd)])
         
-        # Call the command handler on the list of commands
-        command_handler(commands, status_update_callback, logger)
-        commands = []
-        
-        # Rename sequences
-        rep_set_fp = '%s/gg_%d_otus_%s.fasta' % (
+        # rename representative sequences
+        rep_set_fp = '%s/%d_otus_%s.fasta' % (
           rep_set_dir,
           similarity_threshold,
           run_id)
-        rep_set_f = open(rep_set_fp,'w')
-        included_seq_ids = []
-        for seq_id, seq in MinimalFastaParser(open(temp_rep_set_fp)):
-            seq_id_fields = seq_id.split()
-            included_seq_ids.append(seq_id_fields[1])
-            rep_set_f.write('>%s\n%s\n' % (' '.join(seq_id_fields[1:]),
-                                             seq))
-        rep_set_f.close()
+        commands.append([('Rename representative set (%d)' % similarity_threshold,
+                          'mv %s %s' % (temp_rep_set_fp, rep_set_fp))])
         
+        command_handler(commands, status_update_callback, logger)
         
         # prep for the next iteration
         remove_files(files_to_remove)
+        commands = []
         files_to_remove = []
-        current_inseqs = rep_set_fp
+        current_inseqs_fp = rep_set_fp
         
     logger.close()
 
 def main():
     option_parser, opts, args = parse_command_line_parameters(**script_info)
-
+    print "WARNING: THIS CODE IS CURRENTLY UNTESTED - USE AT YOUR OWN RISK!"
     verbose = opts.verbose
     
     input_fasta_fp = opts.input_fasta_fp
