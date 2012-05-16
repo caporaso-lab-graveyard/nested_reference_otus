@@ -19,7 +19,6 @@ from optparse import make_option
 from cogent import LoadTree
 from cogent.util.misc import remove_files
 from cogent.parse.fasta import MinimalFastaParser
-from cogent.parse.greengenes import SpecificGreengenesParser
 from cogent.app.util import get_tmp_filename
 from qiime.util import parse_command_line_parameters, get_options_lookup
 from qiime.workflow import (print_commands,
@@ -38,18 +37,12 @@ script_info['script_description'] = ""
 script_info['script_usage'] = [("","","")]
 script_info['output_description']= ""
 script_info['required_options'] = [
- make_option('-i','--input_tree_fp',help='the input tree file (the tips in the tree define which sequences are included from the database)'),
- make_option('-g','--gg_database_fp',help='the greengenes fields fp (gzipped)'),
+ make_option('-i','--input_fasta_fp',help='the full fasta file to generate reference OTUs from'),
  make_option('-o','--output_dir',help='the output dir'),
  make_option('-r','--run_id',help='the run id (used in naming some files)'),
  make_option('-s','--similarity_thresholds',help='the similarity thresholds'),
 ]
 script_info['optional_options'] = [
- #make_option('-p','--otu_prefix',help='the otu prefix',default=''),
- make_option('-f','--force',action='store_true',\
-        dest='force',help='Force overwrite of existing output directory'+\
-        ' (note: existing files in output_dir will not be removed)'+\
-        ' [default: %default]'),\
  make_option('-w','--print_only',action='store_true',\
         dest='print_only',help='Print the commands but don\'t call them -- '+\
         'useful for debugging [default: %default]',default=False),\
@@ -83,8 +76,7 @@ def call_commands(commands,
 
 
 ## Begin task-specific workflow functions
-def run_pick_nested_greengenes_otus(input_tree_fp,
-                              gg_database_fp,
+def run_pick_nested_greengenes_otus(input_fasta_fp,
                               output_dir,
                               run_id,
                               similarity_thresholds,
@@ -99,77 +91,32 @@ def run_pick_nested_greengenes_otus(input_tree_fp,
     create_dir(otu_dir)
     rep_set_dir = join(output_dir,'rep_set')
     create_dir(rep_set_dir)
-    tax_dir = join(output_dir,'taxonomies')
-    create_dir(tax_dir)
-    tree_dir = join(output_dir,'trees')
-    create_dir(tree_dir)
+    # currently not doing anything with taxonomies and trees
+    # tax_dir = join(output_dir,'taxonomies')
+    # create_dir(tax_dir)
+    # tree_dir = join(output_dir,'trees')
+    # create_dir(tree_dir)
     commands = []
     files_to_remove = []
     
     logger = WorkflowLogger(generate_log_fp(output_dir))
     similarity_thresholds.sort()
     similarity_thresholds.reverse()
-    full_tree = LoadTree(input_tree_fp)
     
-    gg_data = SpecificGreengenesParser(gzip.open(gg_database_fp),
-     fields=['prokMSA_id','decision','aligned_seq','non_ACGT_percent'],
-     ids=[tip.Name for tip in full_tree.tips()])
-    # create some temp files to store the gg database information
-    # that we're interested in
-    aligned_input_fp =   get_tmp_filename(prefix='NestedGG',
-                                          suffix='.fasta')
-    aligned_input_f = open(aligned_input_fp,'w')
-    unaligned_input_fp = get_tmp_filename(prefix='NestedGG',
-                                          suffix='.fasta')
-    unaligned_input_f = open(unaligned_input_fp,'w')
-    isolate_fp = get_tmp_filename(prefix='NestedGG',
-                                  suffix='.txt')
-    isolate_f = open(isolate_fp,'w')
-    isolate_f.write('#prokMSA_id\tdecision\tnon_ACGT_percent\taligned_seq\n')
-    
-    entry_count = 0
-    for prokmsa,decision,aligned_seq,non_ACGT_percent in gg_data:
-        entry_count += 1
-        isolate_f.write('%s\t%s\t%s\tNA\n' % (prokmsa,decision,non_ACGT_percent))
-        clean_aligned_seq = aligned_seq.replace('.','-').replace('U','T')
-        aligned_input_f.write('>%s\n%s\n' %\
-         (prokmsa,clean_aligned_seq))
-        unaligned_input_f.write('>%s\n%s\n' %\
-         (prokmsa,clean_aligned_seq.replace('-','')))
-    logger.write('GG Entries included in analysis: %d\n' % entry_count)
-    if not entry_count:
-        logger.write("No seqs retained from Greengenes.")
-        logger.close()
-        raise WorkflowError, "No seqs retained from Greengenes."
-    isolate_f.close()
-    aligned_input_f.close()
-    unaligned_input_f.close()
-    
-    current_inseqs = unaligned_input_fp
-    current_aligned_inseqs = aligned_input_fp
+    current_inseqs_fp = input_fasta_fp
+    current_inseqs_basename = splitext(split(current_inseqs_fp)[1])[0]
     previous_otu_map = None
     for similarity_threshold in similarity_thresholds:
-        # prep presort command
-        sorted_fasta_fp = get_tmp_filename(prefix='NestedGG',
-                                           suffix='.fasta')
-        sorted_fasta_basename = splitext(split(sorted_fasta_fp)[1])[0]
-        files_to_remove.append(sorted_fasta_fp)
-        presort_cmd = 'presort_gg_fasta.py -f %s -i %s -o %s' % (
-                      current_inseqs,
-                      isolate_fp,
-                      sorted_fasta_fp)
-        commands.append([('Presort (%d)' % similarity_threshold, 
-                           presort_cmd)])
         
         # pick otus command
         otu_fp = '%s/gg_%d_otu_map.txt' % (otu_dir,similarity_threshold)
         clusters_fp = '%s/gg_%d_clusters.uc' % (otu_dir,similarity_threshold)
-        temp_otu_fp = '%s/%s_otus.txt' % (otu_dir, sorted_fasta_basename)
-        temp_log_fp = '%s/%s_otus.log' % (otu_dir, sorted_fasta_basename)
-        temp_clusters_fp = '%s/%s_clusters.uc' % (otu_dir, sorted_fasta_basename)
+        temp_otu_fp = '%s/%s_otus.txt' % (otu_dir, current_inseqs_basename)
+        temp_log_fp = '%s/%s_otus.log' % (otu_dir, current_inseqs_basename)
+        temp_clusters_fp = '%s/%s_clusters.uc' % (otu_dir, current_inseqs_basename)
         pick_otus_cmd = \
          'pick_otus.py -m uclust -DB -i %s -s %1.2f -o %s' % (
-           sorted_fasta_fp,
+           current_inseqs_fp,
            similarity_threshold/100,
            otu_dir)
         
@@ -189,7 +136,7 @@ def run_pick_nested_greengenes_otus(input_tree_fp,
          'pick_rep_set.py -m first -i %s -o %s -f %s' % (
           otu_fp, 
           temp_rep_set_fp,
-          sorted_fasta_fp)
+          current_inseqs_fp)
         commands.append([('Pick Rep Set (%d)' % similarity_threshold,
                            pick_rep_set_cmd)])
         
@@ -211,66 +158,21 @@ def run_pick_nested_greengenes_otus(input_tree_fp,
                                              seq))
         rep_set_f.close()
         
-        # Filter alignment to correspond to rep set
-        aligned_rep_set_fp = '%s/gg_%d_otus_%s_aligned.fasta' % (
-          rep_set_dir,
-          similarity_threshold,
-          run_id)
-        filter_fasta_cmd = 'filter_fasta.py -f %s -o %s -a %s ' % (
-          current_aligned_inseqs,
-          aligned_rep_set_fp,
-          rep_set_fp)
-        commands.append([('Filter aligned seqs (%d)' % similarity_threshold,
-                          filter_fasta_cmd)])
-                          
-        ## Can't currently expand OTU maps as the OTU ids in the OTU
-        ## maps are the arbitrary ascending integers.
-        # Merge OTU maps so OTUs expand to contain all relvant GG 
-        # prokMSA ids (rather than just the previous OTU id)
-        # if not previous_otu_map:
-        #     previous_otu_map = otu_fp
-        # else:
-        #     merged_otu_map = \
-        #      '%s/gg_%d_merged_otu_map.txt' % (otu_dir,similarity_threshold)
-        #     merge_otu_map_cmd = 'merge_otu_maps.py -i %s,%s -o %s' % (
-        #      previous_otu_map,
-        #      otu_fp,
-        #      merged_otu_map)
-        #     commands.append([('Merge OTU map (%d)' % similarity_threshold,
-        #                        merge_otu_map_cmd)])           
-        #     previous_otu_map = merged_otu_map
- 
-        # Call the command handler on the list of commands
-        command_handler(commands, status_update_callback, logger)
-        commands = []
-        
-        # Write tree containing only tips that are in the current 
-        # otu set
-        tree_fp = '%s/gg_%d_otus_%s.tre' % (
-          tree_dir,
-          similarity_threshold,
-          run_id)
-        full_tree.getSubTree(included_seq_ids).writeToFile(tree_fp)
         
         # prep for the next iteration
         remove_files(files_to_remove)
         files_to_remove = []
         current_inseqs = rep_set_fp
-        current_aligned_inseqs = aligned_rep_set_fp
         
     logger.close()
-    remove_files([unaligned_input_fp,
-                  aligned_input_fp,
-                  isolate_fp])
 
 def main():
     option_parser, opts, args = parse_command_line_parameters(**script_info)
 
     verbose = opts.verbose
     
-    input_tree_fp = opts.input_tree_fp
+    input_fasta_fp = opts.input_fasta_fp
     output_dir = opts.output_dir
-    gg_database_fp = opts.gg_database_fp
     run_id = opts.run_id
     similarity_thresholds = map(int,opts.similarity_thresholds.split(','))
     
@@ -281,12 +183,9 @@ def main():
     try:
         makedirs(output_dir)
     except OSError:
-        if opts.force:
-            pass
-        else:
-            print "Output directory already exists. Please choose "+\
-             "a different directory, or force overwrite with -f."
-            exit(1)
+        print "Output directory already exists. Please choose "+\
+         "a different directory, or force overwrite with -f."
+        exit(1)
         
     if print_only:
         command_handler = print_commands
@@ -299,8 +198,7 @@ def main():
         status_update_callback = no_status_updates
 
     run_pick_nested_greengenes_otus(
-     input_tree_fp=input_tree_fp,
-     gg_database_fp=gg_database_fp,
+     input_fasta_fp=input_fasta_fp,
      output_dir=output_dir,
      run_id=run_id,
      similarity_thresholds=similarity_thresholds,
