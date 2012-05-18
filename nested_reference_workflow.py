@@ -26,7 +26,8 @@ from qiime.workflow import (print_commands,
                             no_status_updates,
                             WorkflowLogger,
                             WorkflowError,
-                            generate_log_fp)
+                            generate_log_fp,
+                            call_commands_serially)
 from qiime.util import (create_dir)
 
 options_lookup = get_options_lookup()
@@ -46,41 +47,24 @@ script_info['optional_options'] = [
  make_option('-w','--print_only',action='store_true',\
         dest='print_only',help='Print the commands but don\'t call them -- '+\
         'useful for debugging [default: %default]',default=False),\
+ make_option('-t','--input_tree_fp',help='the full tree to filter to otu trees'),
 ]
 script_info['version'] = __version__
 
+def get_second_field(s):
+    return s.split()[1]
 
-def call_commands(commands,
-                  status_update_callback,
-                  logger):
-    """Run list of commands, one after another """
-    logger.write("Executing commands.\n\n")
-    for c in commands:
-        for e in c:
-            status_update_callback('%s\n%s' % e)
-            logger.write('# %s command \n%s\n\n' % e)
-            proc = Popen(e[1],shell=True,universal_newlines=True,\
-                         stdout=PIPE,stderr=PIPE)
-            # communicate pulls all stdout/stderr from the PIPEs to 
-            # avoid blocking -- don't remove this line!
-            stdout, stderr = proc.communicate()
-            return_value = proc.returncode
-            if return_value != 0:
-                msg = "\n\n*** ERROR RAISED DURING STEP: %s\n" % e[0] +\
-                 "Command run was:\n %s\n" % e[1] +\
-                 "Command returned exit status: %d\n" % return_value +\
-                 "Stdout:\n%s\nStderr\n%s\n" % (stdout,stderr)
-                logger.write(msg)
-                logger.close()
-                raise WorkflowError, msg
-
+def rename_rep_seqs(inseqs,rename_f=get_second_field):
+    """ """
+    for seq_id, seq in MinimalFastaParser(inseqs):
+        yield rename_f(seq_id), seq
 
 ## Begin task-specific workflow functions
-def run_pick_nested_greengenes_otus(input_fasta_fp,
+def pick_nested_reference_otus(input_fasta_fp,
+                              input_tree_fp,
                               output_dir,
                               run_id,
                               similarity_thresholds,
-                              otu_prefix,
                               command_handler,
                               status_update_callback=print_to_stdout):
 
@@ -94,8 +78,9 @@ def run_pick_nested_greengenes_otus(input_fasta_fp,
     # currently not doing anything with taxonomies and trees
     # tax_dir = join(output_dir,'taxonomies')
     # create_dir(tax_dir)
-    # tree_dir = join(output_dir,'trees')
-    # create_dir(tree_dir)
+    if input_tree_fp:
+        tree_dir = join(output_dir,'trees')
+        create_dir(tree_dir)
     commands = []
     files_to_remove = []
     
@@ -104,6 +89,7 @@ def run_pick_nested_greengenes_otus(input_fasta_fp,
     similarity_thresholds.reverse()
     
     current_inseqs_fp = input_fasta_fp
+    current_tree_fp = input_tree_fp
     previous_otu_map = None
     for similarity_threshold in similarity_thresholds:
         current_inseqs_basename = splitext(split(current_inseqs_fp)[1])[0]
@@ -138,16 +124,34 @@ def run_pick_nested_greengenes_otus(input_fasta_fp,
           current_inseqs_fp)
         commands.append([('Pick Rep Set (%d)' % similarity_threshold,
                            pick_rep_set_cmd)])
+        command_handler(commands, status_update_callback, logger, close_logger_on_success=False)
+        commands = []
         
         # rename representative sequences
         rep_set_fp = '%s/%d_otus_%s.fasta' % (
           rep_set_dir,
           similarity_threshold,
           run_id)
-        commands.append([('Rename representative set (%d)' % similarity_threshold,
-                          'mv %s %s' % (temp_rep_set_fp, rep_set_fp))])
+        logger.write('Renaming OTU representative sequences so OTU ids are reference sequence ids.')
+        rep_set_f = open(rep_set_fp,'w')
+        for e in rename_rep_seqs(open(temp_rep_set_fp,'U')):
+            rep_set_f.write('>%s\n%s\n' % e)
+        rep_set_f.close()
+        files_to_remove.append(temp_rep_set_fp)
         
-        command_handler(commands, status_update_callback, logger)
+        # filter the tree, if provided
+        if current_tree_fp != None:
+            tree_fp = '%s/%d_otus_%s.tre' % (
+              tree_dir,
+              similarity_threshold,
+              run_id)
+            tree_cmd = 'filter_tree.py -i %s -f %s -o %s' %\
+               (current_tree_fp,rep_set_fp,tree_fp)
+            commands.append([('Filter tree (%d)' % similarity_threshold,tree_cmd)])
+            command_handler(commands, status_update_callback, logger, close_logger_on_success=False)
+            # prep for the next iteration
+            current_tree_fp = tree_fp
+        
         
         # prep for the next iteration
         remove_files(files_to_remove)
@@ -159,15 +163,14 @@ def run_pick_nested_greengenes_otus(input_fasta_fp,
 
 def main():
     option_parser, opts, args = parse_command_line_parameters(**script_info)
-    print "WARNING: THIS CODE IS CURRENTLY UNTESTED - USE AT YOUR OWN RISK!"
     verbose = opts.verbose
     
     input_fasta_fp = opts.input_fasta_fp
+    input_tree_fp = opts.input_tree_fp
     output_dir = opts.output_dir
     run_id = opts.run_id
     similarity_thresholds = map(int,opts.similarity_thresholds.split(','))
     
-    otu_prefix = '' # this option is not currently supported opts.otu_prefix
     verbose = opts.verbose
     print_only = opts.print_only
     
@@ -181,19 +184,19 @@ def main():
     if print_only:
         command_handler = print_commands
     else:
-        command_handler = call_commands
+        command_handler = call_commands_serially
     
     if verbose:
         status_update_callback = print_to_stdout
     else:
         status_update_callback = no_status_updates
 
-    run_pick_nested_greengenes_otus(
+    pick_nested_reference_otus(
      input_fasta_fp=input_fasta_fp,
+     input_tree_fp=input_tree_fp,
      output_dir=output_dir,
      run_id=run_id,
      similarity_thresholds=similarity_thresholds,
-     otu_prefix=otu_prefix,
      command_handler=command_handler,
      status_update_callback=status_update_callback)
 
