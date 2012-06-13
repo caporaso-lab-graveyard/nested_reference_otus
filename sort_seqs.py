@@ -44,8 +44,8 @@ script_info['required_options'] = [
     options_lookup['fasta_as_primary_input'],
     make_option('-t','--input_taxonomy_map',
         help='the input taxonomy map file. This should be a tab-separated '
-        'file where each row contains a sequence ID and taxonomy string, '
-        'separated by a tab'),
+        'file where each row contains a sequence ID, GenBank number, taxonomy '
+        'string, and source string separated by a tab'),
     options_lookup['output_fp']
 ]
 script_info['optional_options'] = []
@@ -60,6 +60,7 @@ def compute_sequence_stats(fasta_lines, tax_map_lines, unknown_keywords=None):
                          "because it is either missing the header or has a "
                          "corrupt header.")
 
+    # Record the taxonomy depths for each sequence.
     for seq_id, seq_info in fields_to_dict(tax_map_lines[1:]).items():
         if len(seq_info) != 3:
             raise ValueError("The taxonomy map file appears to be invalid "
@@ -74,6 +75,7 @@ def compute_sequence_stats(fasta_lines, tax_map_lines, unknown_keywords=None):
                     taxonomy.remove(unknown_keyword)
         seq_stats[seq_id] = [len(taxonomy)]
 
+    # Record the sequence and sequence for each sequence.
     for seq_id, seq in MinimalFastaParser(fasta_lines):
         if seq_id in seq_stats:
             seq_stats[seq_id].extend([len(seq), seq])
