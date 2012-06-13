@@ -13,7 +13,7 @@ __status__ = "Development"
 """Test suite for the sort_seqs.py module."""
 
 from cogent.util.unit_test import TestCase, main
-from sort_seqs import compute_sequence_stats
+from nested_reference_otus.sort_seqs import compute_sequence_stats
 
 class SortSeqsTests(TestCase):
     """Tests for the sort_seqs.py module."""

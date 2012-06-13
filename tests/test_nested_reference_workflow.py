@@ -22,9 +22,8 @@ from cogent import LoadTree
 from qiime.util import get_tmp_filename
 from qiime.util import load_qiime_config
 from qiime.workflow import no_status_updates, call_commands_serially
-from nested_reference_workflow import (get_second_field,
-                                       rename_rep_seqs,
-                                       pick_nested_reference_otus)
+from nested_reference_otus.nested_reference_workflow import (get_second_field,
+        rename_rep_seqs, pick_nested_reference_otus)
 
 ## The test case timing code included in this file is adapted from
 ## recipes provided at:
