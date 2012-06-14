@@ -17,6 +17,29 @@ from cogent.parse.fasta import MinimalFastaParser
 from qiime.parse import fields_to_dict
 
 def compute_sequence_stats(fasta_lines, tax_map_lines, unknown_keywords=None):
+    """Generates statistics for the input sequences.
+
+    Returns a dictionary with sequence ID as the key, and a list of statistics
+    as the value. The statistics (in order of placement in the list) are:
+        relevant taxonomic depth (integer)
+        sequence read length (integer)
+        sequence data (string)
+    
+    For example, the relevant taxonomic depth for the taxonomy string 'A;B;C'
+    would be 3. If unknown_keywords is supplied, any taxonomic level matching
+    a value in unknown_keywords wil be ignored. Empty or whitespace-only
+    taxonomic levels will also be ignored in the count. For example, if 'Z' is
+    an unknown keyword, the relevant taxonomic depth of 'A;B;Z;C' will be 3.
+
+    Arguments:
+        fasta_lines - list of lines in FASTA format (the result of calling
+            readlines() on the open file handle)
+        tax_map_lines - list of lines from the taxonomy mapping file (the
+            result of calling readlines() on the open file handle)
+        unknown_keywords - a list of strings corresponding to taxonomic level
+            strings that should be ignored when computing the relevant
+            taxonomic depth
+    """
     seq_stats = {}
 
     if tax_map_lines[0] != \
@@ -56,6 +79,22 @@ def compute_sequence_stats(fasta_lines, tax_map_lines, unknown_keywords=None):
     return seq_stats
 
 def sort_seqs_by_taxonomic_depth(seq_stats):
+    """Sorts the input sequences by relevant taxonomic depth and read length.
+
+    The sequences are sorted by relevant taxonomic depth (descending) and for
+    sequences with the same taxonomic depth, the sequences are sorted by read
+    length (descending).
+
+    Returns a list of lists containing the following inner elements:
+        sequence ID (string)
+        relevant taxonomic depth (integer)
+        sequence read length (integer)
+        sequence data (string)
+
+    Arguments:
+        seq_stats - the output of compute_sequence_stats, which is a dictionary
+            mapping sequence ID to sequence statistical information
+    """
     # Build a list from our sequence statistics so that we can sort it.
     seq_stats_list = []
     for seq_id, stats in seq_stats.items():
