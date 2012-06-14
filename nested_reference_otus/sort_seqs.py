@@ -12,6 +12,7 @@ __status__ = "Development"
 
 """Contains functions used in the sort_seqs.py script."""
 
+from operator import itemgetter
 from cogent.parse.fasta import MinimalFastaParser
 from qiime.parse import fields_to_dict
 
@@ -39,14 +40,31 @@ def compute_sequence_stats(fasta_lines, tax_map_lines, unknown_keywords=None):
                     taxonomy.remove(unknown_keyword)
         seq_stats[seq_id] = [len(taxonomy)]
 
-    # Record the sequence and sequence for each sequence.
+    # Record the sequence data and sequence length for each sequence.
     for seq_id, seq in MinimalFastaParser(fasta_lines):
         if seq_id in seq_stats:
             seq_stats[seq_id].extend([len(seq), seq])
         else:
-            print ("Found sequence id %s in FASTA file that wasn't in the "
-                   "taxonomy mapping file\n" % seq_id)
-            # For now, assign a taxonomic depth of 0 because we don't have any
+            print ("Found sequence id '%s' in the FASTA file that wasn't in "
+                   "the taxonomy mapping file\n" % seq_id)
+            # Assign a taxonomic depth of 0 because we don't have any
             # taxonomic information for the sequence.
             seq_stats[seq_id] = [0, len(seq), seq]
     return seq_stats
+
+def sort_seqs_by_taxonomic_depth(seq_stats):
+    # Build a list from our sequence statistics so that we can sort it.
+    seq_stats_list = []
+    for seq_id, stats in seq_stats.items():
+        if len(stats) == 3:
+            seq_stats_list.append([seq_id] + stats)
+        else:
+            print ("Found sequence id '%s' in the taxonomy mapping file that "
+                   "wasn't in the FASTA file\n" % seq_id)
+
+    # Sort on sequence length (decreasing) first, then on taxonomic depth (also
+    # decreasing). sorted() is guaranteed to give us a stable sort, so we will
+    # ultimately end up with the sequences ordered with the most taxonomic
+    # information first, with sequences having the same level of taxonomic
+    # information ordered by decreasing length.
+    return sorted(seq_stats_list, key=itemgetter(1, 2), reverse=True)

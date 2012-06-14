@@ -10,11 +10,11 @@ __maintainer__ = "Jai Ram Rideout"
 __email__ = "jai.rideout@gmail.com"
 __status__ = "Development"
 
-from operator import itemgetter
 from qiime.util import (parse_command_line_parameters,
                         get_options_lookup,
                         make_option)
-from nested_reference_otus.sort_seqs import compute_sequence_stats
+from nested_reference_otus.sort_seqs import (compute_sequence_stats,
+                                             sort_seqs_by_taxonomic_depth)
 
 options_lookup = get_options_lookup()
 
@@ -56,18 +56,9 @@ def main():
             open(opts.input_fasta_fp, 'U').readlines(),
             open(opts.input_taxonomy_map, 'U').readlines(),
             ['Incertae_sedis', 'unidentified'])
-    seq_stats_sorted = []
-    for seq_id, stats in seq_stats.items():
-        if len(stats) == 3:
-            seq_stats_sorted.append([seq_id] + stats)
-        else:
-            print ("Found sequence id %s in taxonomy mapping file that wasn't "
-                   "in FASTA file\n" % seq_id)
+    seq_stats_sorted = sort_seqs_by_taxonomic_depth(seq_stats)
 
-    # Sort on sequence length (decreasing) first, then on taxonomic depth (also
-    # decreasing). sorted() is guaranteed to give us a stable sort.
-    seq_stats_sorted = sorted(seq_stats_sorted, key=itemgetter(2, 1),
-                              reverse=True)
+    # Write out our sorted sequences.
     out_fasta_f = open(opts.output_fp, 'w')
     for seq in seq_stats_sorted:
         out_fasta_f.write('>' + seq[0] + '\n' + seq[3] + '\n')

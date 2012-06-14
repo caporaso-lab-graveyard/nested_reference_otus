@@ -70,7 +70,7 @@ def pick_nested_reference_otus(input_fasta_fp,
         temp_log_fp = '%s/%s_otus.log' % (otu_dir, current_inseqs_basename)
         temp_clusters_fp = '%s/%s_clusters.uc' % (otu_dir, current_inseqs_basename)
         pick_otus_cmd = \
-         'pick_otus.py -m uclust -DB -i %s -s %1.2f -o %s' % (
+         'pick_otus.py -m uclust -DBz -i %s -s %1.2f -o %s' % (
            current_inseqs_fp,
            similarity_threshold/100,
            otu_dir)
