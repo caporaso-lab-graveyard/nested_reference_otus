@@ -48,6 +48,13 @@ class SortSeqsTests(TestCase):
                 "2\tG2\tA\tfoo\n",
                 "3\tG3\tA;B;Z;Z;F\tfoo\n"]
 
+        # Taxonomy string with double semicolons and whitespace taxonomy level.
+        self.tax_map4 = [
+                "ID Number\tGenBank Number\tNew Taxon String\tSource\n",
+                "1\tG1\tA;B;;C\tfoo\n",
+                "2\tG2\tA;B;D\tfoo\n",
+                "3\tG3\tA;B;Z;Z;   ;F\tfoo\n"]
+
         # Missing column in one of the rows.
         self.tax_map_invalid1 = [
                 "ID Number\tGenBank Number\tNew Taxon String\tSource\n",
@@ -153,6 +160,13 @@ class SortSeqsTests(TestCase):
                              "that wasn't in the taxonomy mapping file")
         finally:
             sys.stdout = saved_stdout
+
+    def test_compute_sequence_stats_empty_taxonomy_levels(self):
+        """Test computing seq stats on taxonomies with empty levels."""
+        exp = {'1': [3, 6, 'AGGTAC'], '3': [3, 7, 'AGGCAAA'],
+               '2': [3, 2, 'AG']}
+        obs = compute_sequence_stats(self.fasta2, self.tax_map4, ['Z'])
+        self.assertEqual(obs, exp)
 
     def test_compute_sequence_stats_invalid_tax_map(self):
         """Test computing seq stats on invalid taxonomy maps."""

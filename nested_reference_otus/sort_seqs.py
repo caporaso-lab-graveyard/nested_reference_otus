@@ -30,7 +30,10 @@ def compute_sequence_stats(fasta_lines, tax_map_lines, unknown_keywords=None):
         if len(seq_info) != 3:
             raise ValueError("The taxonomy map file appears to be invalid "
                              "because it does not have exactly 4 columns.")
-        taxonomy = seq_info[1].split(';')
+        # Split at each level and remove any empty levels or levels that
+        # contain only whitespace.
+        taxonomy = [level for level in seq_info[1].split(';') \
+                    if level.strip() != '']
 
         # Remove any 'unknown' taxonomy levels before computing the known
         # taxonomy depth.
