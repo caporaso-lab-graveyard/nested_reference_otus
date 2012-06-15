@@ -19,8 +19,14 @@ from nested_reference_otus.summarize_taxonomic_agreement import (
 options_lookup = get_options_lookup()
 
 script_info = {}
-script_info['brief_description'] = "Summarizes the agreement of sequences with their reference's taxonomy"
-script_info['script_description'] = ""
+script_info['brief_description'] = "Summarizes the agreement of sequences with their reference taxonomy"
+script_info['script_description'] = """
+This script summarizes the agreement of each sequence's taxonomy with the
+reference sequence taxonomy in the OTU that the sequence resides in. The
+taxonomic agreement is expressed as a percentage at each taxonomic level. The
+script also reports all values that are encountered at a particular taxonomic
+level, with the reference's value listed first.
+"""
 script_info['script_usage'] = []
 script_info['script_usage'].append(("Summarize taxonomic agreement",
 "Summarizes the percentage of sequences in each OTU that have the same "
