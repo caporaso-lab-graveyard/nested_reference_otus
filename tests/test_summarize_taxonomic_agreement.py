@@ -98,29 +98,31 @@ class SummarizeTaxonomicAgreementTests(TestCase):
 
     def test_generate_taxonomic_agreement_summary_standard(self):
         """Test computing the taxonomic agreement for seqs in OTUs."""
-        exp = {'A': [3, [100.0, 50.0, 0.0], [['A'], ['B', 'Z'], ['C', 'D', 'T']]]}
+        exp = {'A': [3, ['1', '2', '3'], [100.0, 66.66666666666666,
+                     33.33333333333333], [['A'], ['B', 'Z'], ['C', 'D', 'T']]]}
         obs = _generate_taxonomic_agreement_summary(self.otu_map1,
                                                     self.tax_map1, 3)
-        self.assertEqual(obs, exp)
+        self.assertFloatEqual(obs, exp)
 
     def test_generate_taxonomic_agreement_summary_ref_only(self):
         """Test computing the taxonomic agreement for OTU with only a ref."""
-        exp = {'A': [2, [100.0, 100.0, 0.0], [['A'], ['B'], ['C', 'D']]],
-               'B': [1, [0.0, 0.0, 0.0], [['A'], ['Z'], ['T']]]}
+        exp = {'A': [2, ['1', '2'], [100.0, 100.0, 50.0], [['A'], ['B'],
+                    ['C', 'D']]],
+               'B': [1, ['3'], [100.0, 100.0, 100.0], [['A'], ['Z'], ['T']]]}
         obs = _generate_taxonomic_agreement_summary(self.otu_map2,
                                                     self.tax_map1, 3)
-        self.assertEqual(obs, exp)
+        self.assertFloatEqual(obs, exp)
 
     def test_summarize_taxonomic_agreement_standard(self):
         """Test writing out the taxonomic agreement for seqs in OTUs."""
-        exp = ['A\t3\t100.00%\t50.00%\t0.00%\tA\tB,Z\tC,D,T\n']
+        exp = ['A\t3\t1,2,3\t100.00%\t66.67%\t33.33%\tA\tB,Z\tC,D,T\n']
         obs = summarize_taxonomic_agreement(self.otu_map1, self.tax_map1, 3)
         self.assertEqual(obs, exp)
 
     def test_summarize_taxonomic_agreement_multiple_otus(self):
         """Test writing out the taxonomic agreement for multiple OTUs."""
-        exp = ['A\t2\t100.00%\t100.00%\t0.00%\tA\tB\tC,D\n',
-               'B\t1\t0.00%\t0.00%\t0.00%\tA\tZ\tT\n']
+        exp = ['A\t2\t1,2\t100.00%\t100.00%\t50.00%\tA\tB\tC,D\n',
+               'B\t1\t3\t100.00%\t100.00%\t100.00%\tA\tZ\tT\n']
         obs = summarize_taxonomic_agreement(self.otu_map2, self.tax_map1, 3)
         self.assertEqual(obs, exp)
 

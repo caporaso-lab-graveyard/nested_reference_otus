@@ -56,9 +56,9 @@ def main():
             open(opts.input_taxonomy_map, 'U').readlines())
 
     out_f = open(opts.output_fp, 'w')
-    out_f.write('OTU_ID\tSize\tDomain\tKingdom\tPhylum\tClass\tOrder\tFamily\t'
-                'Genus\tSpecies\tDomain\tKingdom\tPhylum\tClass\tOrder\t'
-                'Family\tGenus\tSpecies\n')
+    out_f.write('OTU_ID\tSize\tSeq_IDs\tDomain\tKingdom\tPhylum\tClass\t'
+                'Order\tFamily\tGenus\tSpecies\tDomain\tKingdom\tPhylum\t'
+                'Class\tOrder\tFamily\tGenus\tSpecies\n')
     for line in results:
         out_f.write(line)
     out_f.close()
