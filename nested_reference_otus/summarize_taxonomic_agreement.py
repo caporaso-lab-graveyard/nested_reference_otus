@@ -50,8 +50,15 @@ def summarize_taxonomic_agreement(otu_map_lines, tax_map_lines,
         otu_id = line.split('\t')[0]
         agreement_info = taxonomic_agreement[otu_id]
 
-        result_str = '%s\t%d' % (otu_id, agreement_info[0])
-        result_str += '\t' + ','.join(agreement_info[1])
+        result_str = '%s\t%d\t' % (otu_id, agreement_info[0])
+
+        # We put explicit quotes around each seq ID since some of the IDs are
+        # numbers and this messes with programs like Excel, where they try to
+        # interpret them as a number with commas in it.
+        for idx, seq_id in enumerate(agreement_info[1]):
+            result_str += "'" + seq_id + "'"
+            if idx != len(agreement_info[1]) - 1:
+                result_str += ','
         for level_agreement in agreement_info[2]:
             result_str += '\t%.2f%%' % level_agreement
         for levels_encountered in agreement_info[3]:

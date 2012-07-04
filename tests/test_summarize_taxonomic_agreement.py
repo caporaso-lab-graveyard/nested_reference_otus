@@ -115,14 +115,15 @@ class SummarizeTaxonomicAgreementTests(TestCase):
 
     def test_summarize_taxonomic_agreement_standard(self):
         """Test writing out the taxonomic agreement for seqs in OTUs."""
-        exp = ['A\t3\t1,2,3\t100.00%\t66.67%\t33.33%\tA\tB,Z\tC,D,T\n']
+        exp = ['A\t3\t\'1\',\'2\',\'3\'\t100.00%\t66.67%\t33.33%\tA\tB,Z\t'
+               'C,D,T\n']
         obs = summarize_taxonomic_agreement(self.otu_map1, self.tax_map1, 3)
         self.assertEqual(obs, exp)
 
     def test_summarize_taxonomic_agreement_multiple_otus(self):
         """Test writing out the taxonomic agreement for multiple OTUs."""
-        exp = ['A\t2\t1,2\t100.00%\t100.00%\t50.00%\tA\tB\tC,D\n',
-               'B\t1\t3\t100.00%\t100.00%\t100.00%\tA\tZ\tT\n']
+        exp = ['A\t2\t\'1\',\'2\'\t100.00%\t100.00%\t50.00%\tA\tB\tC,D\n',
+               'B\t1\t\'3\'\t100.00%\t100.00%\t100.00%\tA\tZ\tT\n']
         obs = summarize_taxonomic_agreement(self.otu_map2, self.tax_map1, 3)
         self.assertEqual(obs, exp)
 
