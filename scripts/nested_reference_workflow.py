@@ -17,7 +17,7 @@ from subprocess import Popen, PIPE, STDOUT
 from optparse import make_option
 from cogent import LoadTree
 from qiime.util import parse_command_line_parameters, get_options_lookup
-from qiime.workflow import (print_commands,
+from qiime.workflow.util import (print_commands,
                             no_status_updates,
                             WorkflowError,
                             call_commands_serially)

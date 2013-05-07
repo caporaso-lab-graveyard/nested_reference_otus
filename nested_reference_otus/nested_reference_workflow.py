@@ -18,7 +18,7 @@ from cogent.app.util import get_tmp_filename
 from cogent.parse.fasta import MinimalFastaParser
 from cogent.util.misc import remove_files
 from qiime.util import create_dir
-from qiime.workflow import generate_log_fp, print_to_stdout, WorkflowLogger
+from qiime.workflow.util import generate_log_fp, print_to_stdout, WorkflowLogger
 
 def get_second_field(s):
     return s.split()[1]
